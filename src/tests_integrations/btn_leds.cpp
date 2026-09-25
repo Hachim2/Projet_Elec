@@ -12,7 +12,7 @@ int compteur = 0;
 int derniereLecture = HIGH;
 int etatBoutonStable = HIGH;
 int dernierChangement = 0;
-const int DELAI_ANTI_REBOND = 30; // millisecondes
+unsigned long dernierChangement = 0; // millisecondes
 
 void afficherLED() {
   // Tout éteindre avant d'allumer la LED choisie
