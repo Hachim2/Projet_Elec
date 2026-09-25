@@ -9,8 +9,8 @@ int etatLED = 0;  // 0 : éteintes, 1 : rouge, 2 : verte, 3 : jaune
 int compteur = 0;
 
 // Variables pour filtrer les rebonds du bouton
-int derniereLecture = HIGH;
-int etatBoutonStable = HIGH;
+int derniereLecture = LOW;
+int etatBoutonStable = LOW;
 unsigned long dernierChangement = 0;
 const unsigned long DELAI_ANTI_REBOND = 30; // millisecondes
 
@@ -37,7 +37,7 @@ void setup() {
   pinMode(LED_ROUGE, OUTPUT);
   pinMode(LED_VERTE, OUTPUT);
   pinMode(LED_JAUNE, OUTPUT);
-  pinMode(BOUTON, INPUT_PULLUP);
+  pinMode(BOUTON, INPUT);
 
   Serial.begin(9600);
   afficherLED();
@@ -61,7 +61,7 @@ void loop() {
     if (lecture != etatBoutonStable) {
       etatBoutonStable = lecture;
 
-      // Réagir uniquement au nouvel appui, pas au relâchement
+      // Réagir au relâchement du bouton
       if (etatBoutonStable == LOW) {
         compteur++;
         etatLED = (etatLED + 1) % 4;
