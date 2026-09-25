@@ -11,8 +11,8 @@ int compteur = 0;
 // Variables pour filtrer les rebonds du bouton
 int derniereLecture = HIGH;
 int etatBoutonStable = HIGH;
-int dernierChangement = 0;
-unsigned long dernierChangement = 0; // millisecondes
+unsigned long dernierChangement = 0;
+const unsigned long DELAI_ANTI_REBOND = 30; // millisecondes
 
 void afficherLED() {
   // Tout éteindre avant d'allumer la LED choisie
