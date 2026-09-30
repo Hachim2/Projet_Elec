@@ -1,19 +1,32 @@
-/*#include <Arduino.h>
+#include <Arduino.h>
+#include "setup.hpp"
+#include "gui.hpp"
+#include "encoder.hpp"
 
-// put function declarations here:
-int myFunction(int, int);
+// 0 = Choix 1, 1 = Choix 2, 2 = Choix 3.
+int gen_selected = 0;
+static int previous_selected = 0;
+
+static void do_SW2BTN() {
+    // Clic detecte au relachement. Ajouter ici les actions du choix
+    // gen_selected (0, 1 ou 2) lorsqu'elles seront definies.
+}
 
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+    init_hardware();
+    print_gen_menu(gen_selected);
+    print_hello_screen();
+    previous_selected = gen_selected;
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-}
+    if (lire_encodeur(&gen_selected, GEN_MENU_SIZE)) {
+        do_SW2BTN();
+    }
 
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+    // Le menu reste affiche sans devoir le renvoyer en permanence.
+    if (gen_selected != previous_selected) {
+        print_gen_menu(gen_selected);
+        previous_selected = gen_selected;
+    }
 }
-*/
