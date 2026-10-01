@@ -23,6 +23,9 @@ constexpr uint8_t SW2A = 3;
 constexpr uint8_t SW2B = 4;
 constexpr uint8_t SW2BTN = 2;
 
+//Bouton
+constexpr uint8_t BTN = 5;
+
 // Le "1" selectionne un buffer d'une page (128 octets pour cet ecran).
 extern U8G2_SSD1306_128X64_NONAME_1_HW_I2C display;
 extern U8G2_SSD1306_128X64_NONAME_1_HW_I2C display_second;
