@@ -4,6 +4,9 @@
 #include <Arduino.h>
 #include <U8g2lib.h>
 
+//Pin capteur PPG
+const int PIN_PPG = A0;
+
 // Base : Arduino Nano ATmega328P, comme le projet fourni.
 // En I2C materiel sur cette carte, SDA et SCL sont imposes.
 constexpr uint8_t OLED_SDA = A4;
