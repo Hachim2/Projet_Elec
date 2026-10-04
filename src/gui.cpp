@@ -7,13 +7,42 @@
 // Textes en Flash, comme dans le projet fourni. ASCII sans accents.
 static const char menu_title[] PROGMEM = "Menu principal";
 static const char hello_text[] PROGMEM = "bonjour";
-static const char gen_0[] PROGMEM = "Choix 1";
-static const char gen_1[] PROGMEM = "Choix 2";
+static const char gen_0[] PROGMEM = "Graphique";
+static const char gen_1[] PROGMEM = "Mes donnees";
 static const char gen_2[] PROGMEM = "Choix 3";
 static const char* const GEN_MENU[] PROGMEM = {gen_0, gen_1, gen_2};
 
 // 20 caracteres maximum par libelle avec la police de 6 pixels.
 static constexpr uint8_t LABEL_SIZE = 21;
+
+// Conserve les points pour redessiner chaque page du petit buffer OLED.
+static uint8_t graphe_y[SCREEN_WIDTH];
+static uint8_t graphe_points = 0;
+
+void reinitialiser_graphe_bpm() {
+    graphe_points = 0;
+    display.firstPage();
+    do {
+        // Une page vide efface le graphique precedent ou le menu.
+    } while (display.nextPage());
+}
+
+void afficherGrapheBPM(float bpm) {
+    bpm = constrain(bpm, 40.0f, 180.0f);
+    const uint8_t y = map((int)bpm, 40, 180, SCREEN_HEIGHT - 1, 0);
+
+    if (graphe_points >= SCREEN_WIDTH) graphe_points = 0;
+    graphe_y[graphe_points++] = y;
+
+    display.setDrawColor(1);
+    display.firstPage();
+    do {
+        display.drawPixel(0, graphe_y[0]);
+        for (uint8_t x = 1; x < graphe_points; ++x) {
+            display.drawLine(x - 1, graphe_y[x - 1], x, graphe_y[x]);
+        }
+    } while (display.nextPage());
+}
 
 static void load_label(PGM_P source, char* buffer) {
     strncpy_P(buffer, source, LABEL_SIZE - 1);

@@ -9,6 +9,9 @@ constexpr uint8_t GEN_MENU_SIZE = 3;
 // Dessine le menu complet ; aucune action ni lecture de l'encodeur.
 void print_gen_menu(uint8_t selected);
 
+void reinitialiser_graphe_bpm();
+void afficherGrapheBPM(float bpm);
+
 // Affiche uniquement "bonjour" au centre du deuxieme ecran.
 void print_hello_screen();
 

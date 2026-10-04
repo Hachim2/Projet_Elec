@@ -1,18 +1,23 @@
 #include "bpm.hpp"
 
-void setup() {
+static float bpm = 0;
+
+float lire_bpm() {
+    return bpm;
+}
+
+void init_bpm() {
     Serial.begin(115200);
     pinMode(PIN_PPG, INPUT);
 }
 
-void loop() {
+void actualiser_bpm() {
     static unsigned long dernierEchantillon = 0;
     static int valeurs[NB_ECHANTILLONS] = {};
     static uint8_t indice = 0, nombre = 0;
     static unsigned long somme = 0;
     static unsigned long dernierBattement = 0;
     static bool premierBattement = true, detectionArmee = false;
-    static float bpm = 0;
 
     unsigned long maintenant = millis();
     if (maintenant - dernierEchantillon < PERIODE_LECTURE) return;
