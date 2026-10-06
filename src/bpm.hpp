@@ -2,17 +2,19 @@
 #define BPM_HPP
 
 #include <Arduino.h>
-#include "setup.hpp"
 
-// 25 mesures par seconde.
-const unsigned long PERIODE_LECTURE = 40;
-const uint8_t NB_ECHANTILLONS = 25; // Environ une seconde de signal.
-const int SEUIL_BATTEMENT = 10; // Unites ADC, a ajuster au capteur.
-const unsigned long INTERVALLE_MIN = 300;  // 200 BPM maximum.
-const unsigned long INTERVALLE_MAX = 2000; // 30 BPM minimum.
-
+// Lance l'echantillonnage du capteur PPG toutes les 5 ms par le Timer1.
+// Les mesures continuent pendant les dessins I2C des ecrans.
 void init_bpm();
+
+// A appeler dans loop() : integre les battements detectes et renvoie le BPM
+// moyen sur les 10 derniers intervalles (0 tant qu'aucun rythme n'est trouve).
 float actualiser_bpm();
+
+// Derniere valeur calculee par actualiser_bpm(), sans traitement.
 float lire_bpm();
+
+// Renvoie true une fois par battement detecte (pour le bip du buzzer).
+bool battement_detecte();
 
 #endif

@@ -14,7 +14,7 @@ constexpr uint8_t OLED_SCL = A5;
 constexpr uint8_t OLED_RESET = U8X8_PIN_NONE;
 // Adresses I2C sur 7 bits, a faire correspondre au reglage physique des modules.
 constexpr uint8_t OLED_ADDRESS = 0x3D; // Premier ecran : menu.
-constexpr uint8_t OLED_SECOND_ADDRESS = 0x3C; // Deuxieme ecran : bonjour.
+constexpr uint8_t OLED_SECOND_ADDRESS = 0x3C; // Deuxieme ecran : BPM.
 static_assert(OLED_ADDRESS != OLED_SECOND_ADDRESS,
               "Les deux ecrans doivent avoir des adresses I2C differentes.");
 constexpr uint8_t SCREEN_WIDTH = 128;
@@ -26,8 +26,24 @@ constexpr uint8_t SW2A = 3;
 constexpr uint8_t SW2B = 4;
 constexpr uint8_t SW2BTN = 2;
 
-//Bouton
-constexpr uint8_t BTN = 5;
+// Bouton retour au menu principal, entre D9 et GND (rappel interne).
+// Si le bouton est cable vers 5V avec une resistance de tirage vers GND,
+// passer BTN_RETOUR_APPUI a HIGH.
+constexpr uint8_t BTN_RETOUR = 9;
+constexpr uint8_t BTN_RETOUR_APPUI = LOW;
+
+// Buzzer actif : HIGH = son. Un bip a chaque battement.
+constexpr uint8_t BUZZER = 5;
+
+// LEDs de zone : jaune < 60 BPM, verte 60-90 BPM, rouge > 90 BPM.
+constexpr uint8_t LED_ROUGE = 8;
+constexpr uint8_t LED_VERTE = 7;
+constexpr uint8_t LED_JAUNE = 6;
+
+// Horloge RTC DS1302 (liaison 3 fils), memes broches que rtc_test.cpp.
+constexpr uint8_t RTC_CLK = 10;
+constexpr uint8_t RTC_DAT = 11;
+constexpr uint8_t RTC_CE = 12;
 
 // Le "1" selectionne un buffer d'une page (128 octets pour cet ecran).
 extern U8G2_SSD1306_128X64_NONAME_1_HW_I2C display;

@@ -78,14 +78,21 @@ void apply_encoder_step(int delta, int* selected, int menu_size) {
     if (*selected < 0) *selected += menu_size;
 }
 
-bool lire_encodeur(int* selected, int menu_size) {
+int8_t lire_pas_encodeur() {
     int8_t delta;
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
         delta = pending_steps;
         pending_steps = 0;
     }
-    apply_encoder_step(delta, selected, menu_size);
+    return delta;
+}
 
+bool lire_encodeur(int* selected, int menu_size) {
+    apply_encoder_step(lire_pas_encodeur(), selected, menu_size);
+    return lire_bouton_encodeur();
+}
+
+bool lire_bouton_encodeur() {
     const int btn = digitalRead(SW2BTN);
     const uint32_t now = millis();
     if (btn != last_button_reading) {

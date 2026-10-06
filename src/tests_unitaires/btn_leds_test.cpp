@@ -1,4 +1,4 @@
-/*#include <Arduino.h>
+#include <Arduino.h>
 
 const int LED_ROUGE = 6;
 const int LED_VERTE = 5;
@@ -82,4 +82,3 @@ void loop() {
     }
   }
 }
-  */

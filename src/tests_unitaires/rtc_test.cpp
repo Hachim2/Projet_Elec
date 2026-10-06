@@ -2,9 +2,9 @@
 #include <ThreeWire.h>
 #include <RtcDS1302.h>
 
-const byte PIN_CLK = 7;
-const byte PIN_DAT = 6;
-const byte PIN_CE  = 5;
+const byte PIN_CLK = 10;
+const byte PIN_DAT = 11;
+const byte PIN_CE  = 12;
 
 // Ordre : DAT, CLK, CE
 ThreeWire liaison(PIN_DAT, PIN_CLK, PIN_CE);
