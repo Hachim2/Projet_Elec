@@ -12,7 +12,7 @@ const unsigned long INTERVALLE_MIN = 300;  // 200 BPM maximum.
 const unsigned long INTERVALLE_MAX = 2000; // 30 BPM minimum.
 
 void init_bpm();
-void actualiser_bpm();
+float actualiser_bpm();
 float lire_bpm();
 
 #endif
