@@ -9,18 +9,22 @@ constexpr uint8_t GEN_MENU_SIZE = 3;
 // Dessine le menu complet ; aucune action ni lecture de l'encodeur.
 void print_gen_menu(uint8_t selected);
 
-// Graphique BPM (ecran 1) : BPM en ordonnee, t(s) depuis le demarrage en
-// abscisse. Un point d'historique toutes les GRAPHE_PERIODE_MS.
-constexpr uint16_t GRAPHE_PERIODE_MS = 500;
+// Graphique (ecran 1) : trace du signal du capteur facon moniteur
+// d'hopital, balayage de gauche a droite, temps en secondes en abscisse.
 
-// Enregistre un point (0 = pas de mesure), meme si le graphe est cache.
-void graphe_ajouter_point(uint8_t bpm);
+// Vide le trace (a appeler une fois dans setup).
+void init_graphe();
+
+// Ajoute un echantillon du signal (lire_echantillon_signal), meme si le
+// graphe est cache, pour que le trace soit deja rempli a l'ouverture.
+void graphe_ajouter_echantillon(int8_t valeur);
 
 // pas > 0 : zoom avant sur l'axe du temps, pas < 0 : zoom arriere.
 // Renvoie true si le niveau de zoom a change.
 bool graphe_zoomer(int pas);
 
-void afficher_graphe_bpm();
+// Redessine le trace, avec le BPM en haut a gauche.
+void afficher_graphe_signal(uint8_t bpm);
 
 // Page "Mes donnees" : la plus recente mesure en haut, puis "Effacer tout".
 // Le nombre de lignes selectionnables vaut 0 s'il n'y a aucune mesure.
@@ -32,7 +36,7 @@ void afficher_message(const char* titre_flash, const char* detail);
 
 void afficher_confirmation_effacement();
 
-// Affiche le BPM en grand sur le deuxieme ecran ("--" si bpm vaut 0).
-void print_bpm_screen(uint8_t bpm);
+// Deuxieme ecran : heure et date en haut, BPM en grand ("--" si bpm vaut 0).
+void print_bpm_screen(uint8_t bpm, const char* heure);
 
 #endif

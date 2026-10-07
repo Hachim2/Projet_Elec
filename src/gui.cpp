@@ -1,6 +1,7 @@
 #include "gui.hpp"
 #include "setup.hpp"
 #include "donnees.hpp"
+#include "bpm.hpp"
 #include <avr/pgmspace.h>
 #include <string.h>
 
@@ -17,145 +18,145 @@ static_assert(sizeof(GEN_MENU) / sizeof(GEN_MENU[0]) == GEN_MENU_SIZE,
 // 20 caracteres maximum par libelle avec la police de 6 pixels.
 static constexpr uint8_t LABEL_SIZE = 21;
 
-// --- Graphique BPM ---
-// Historique : un point toutes les 500 ms, les 2 dernieres minutes.
-// Le point d'indice k correspond a t = k / 2 secondes depuis le demarrage.
-static constexpr uint8_t POINTS_PAR_SECONDE = 1000 / GRAPHE_PERIODE_MS;
-static constexpr uint16_t TAILLE_HISTORIQUE = 120 * POINTS_PAR_SECONDE;
-static uint8_t historique[TAILLE_HISTORIQUE]; // 0 = pas de mesure.
-static uint32_t nb_points_total = 0;
+// --- Trace du signal, facon moniteur d'hopital ---
+// Le trace balaie la zone de gauche a droite et recommence a gauche en
+// effacant devant lui. Chaque colonne = moyenne de plusieurs echantillons
+// de 5 ms : c'est ce nombre qui regle le zoom sur le temps.
+static constexpr uint8_t ECHANTILLONS_PAR_COLONNE[] = {2, 3, 4, 6, 8};
+static constexpr uint8_t NB_ZOOMS = sizeof(ECHANTILLONS_PAR_COLONNE);
+static constexpr uint8_t PERIODE_ECHANTILLON_MS = 5;
+static uint8_t zoom = 2; // 4 echantillons par colonne : 2,3 s a l'ecran.
 
-// Niveaux de zoom : largeur de la fenetre et pas des graduations (s).
-static constexpr uint8_t FENETRES_S[] = {5, 10, 20, 30, 60, 120};
-static constexpr uint8_t GRADUATIONS_S[] = {1, 2, 5, 5, 10, 30};
-static constexpr uint8_t NB_ZOOMS = sizeof(FENETRES_S);
-static_assert(sizeof(GRADUATIONS_S) == NB_ZOOMS, "Un pas par niveau de zoom.");
-static_assert(FENETRES_S[NB_ZOOMS - 1] * POINTS_PAR_SECONDE <= TAILLE_HISTORIQUE,
-              "La plus grande fenetre doit tenir dans l'historique.");
-static uint8_t zoom = 3; // 30 s au depart.
-
-// Zone de trace : axe des BPM en x = 16, axe du temps en y = 55.
-static constexpr uint8_t G_X = 16;
+// Zone de trace : graduation a gauche, axe vertical en x = G_X.
+static constexpr uint8_t G_X = 18; // Place pour "-200".
 static constexpr uint8_t G_HAUT = 9;
 static constexpr uint8_t G_BAS = 55;
-static constexpr uint8_t G_LARGEUR = SCREEN_WIDTH - G_X - 1;
 static constexpr uint8_t Y_TEXTE_TEMPS = 58;
+static constexpr uint8_t LARGEUR_TRACE = SCREEN_WIDTH - G_X - 1;
+static constexpr uint8_t TROU_BALAYAGE = 6;
 
-void graphe_ajouter_point(uint8_t bpm) {
-    historique[nb_points_total % TAILLE_HISTORIQUE] = bpm;
-    ++nb_points_total;
+// Echelle verticale fixe, en unites ADC du signal recentre (capteur moins sa
+// moyenne sur 0,5 s) : les pics montent au-dessus du seuil de detection
+// (200), les creux descendent sous 0. Les valeurs en dehors sont collees
+// au bord.
+static constexpr int16_t SIGNAL_BAS = -200;
+static constexpr int16_t SIGNAL_HAUT = 400;
+static constexpr int16_t PAS_GRADUATION = 200;
+
+static constexpr int8_t PAS_DE_DONNEE = -128;
+static int8_t trace[LARGEUR_TRACE]; // Signal / DIVISEUR_SIGNAL_TRACE.
+static uint8_t curseur = 0;         // Prochaine colonne ecrite.
+static int16_t somme_colonne = 0;
+static uint8_t nb_dans_colonne = 0;
+
+static void effacer_trace() {
+    memset(trace, PAS_DE_DONNEE, sizeof(trace));
+    curseur = 0;
+    somme_colonne = 0;
+    nb_dans_colonne = 0;
+}
+
+void init_graphe() {
+    effacer_trace();
+}
+
+void graphe_ajouter_echantillon(int8_t valeur) {
+    somme_colonne += valeur;
+    if (++nb_dans_colonne < ECHANTILLONS_PAR_COLONNE[zoom]) return;
+
+    trace[curseur] = somme_colonne / nb_dans_colonne;
+    somme_colonne = 0;
+    nb_dans_colonne = 0;
+    if (++curseur >= LARGEUR_TRACE) curseur = 0;
 }
 
 bool graphe_zoomer(int pas) {
-    // pas > 0 : zoom avant, donc fenetre plus courte.
+    // pas > 0 : zoom avant, donc moins d'echantillons par colonne.
     const int nouveau = constrain((int)zoom - pas, 0, NB_ZOOMS - 1);
     if (nouveau == zoom) return false;
     zoom = nouveau;
+    effacer_trace(); // L'echelle de temps change : on repart de zero.
     return true;
 }
 
-static int16_t x_point(uint32_t k, uint32_t debut, uint16_t fenetre) {
-    return G_X + 1 + (int32_t)(k - debut) * (G_LARGEUR - 1) / fenetre;
+// Colonnes juste devant le curseur : effacees, comme sur un vrai moniteur.
+static bool dans_le_trou(uint8_t colonne) {
+    // Distance en avant du curseur, en repassant a gauche apres le bord droit.
+    return (colonne + LARGEUR_TRACE - curseur) % LARGEUR_TRACE < TROU_BALAYAGE;
 }
 
-static int16_t y_bpm(int bpm, int bas, int haut) {
-    return G_BAS - 1 - (int32_t)(bpm - bas) * (G_BAS - 1 - G_HAUT) / (haut - bas);
+static int16_t y_signal(int16_t adc) {
+    adc = constrain(adc, SIGNAL_BAS, SIGNAL_HAUT);
+    return G_BAS - 1 - (int32_t)(adc - SIGNAL_BAS) * (G_BAS - 1 - G_HAUT) /
+                           (SIGNAL_HAUT - SIGNAL_BAS);
 }
 
-// Libelle a gauche de l'axe, ligne pointillee horizontale dans le graphe.
-static void graduation_bpm(int bpm, int bas, int haut) {
-    char texte[4];
-    utoa(bpm, texte, 10);
-    const int16_t y = y_bpm(bpm, bas, haut);
-    display.drawStr(G_X - 2 - display.getStrWidth(texte), y - 3, texte);
-    display.drawPixel(G_X - 1, y);
-    for (uint8_t x = G_X + 3; x < SCREEN_WIDTH; x += 3) display.drawPixel(x, y);
-}
+void afficher_graphe_signal(uint8_t bpm) {
+    const uint16_t ms_par_colonne = ECHANTILLONS_PAR_COLONNE[zoom] * PERIODE_ECHANTILLON_MS;
 
-// Libelle sous l'axe, ligne pointillee verticale dans le graphe.
-static void graduation_temps(uint32_t k, uint32_t debut, uint16_t fenetre) {
-    char texte[6];
-    utoa(k / POINTS_PAR_SECONDE, texte, 10);
-    const int16_t x = x_point(k, debut, fenetre);
-    const int16_t largeur = display.getStrWidth(texte);
-    const int16_t x_texte = constrain(x - largeur / 2, G_X + 1, SCREEN_WIDTH - largeur);
-    display.drawStr(x_texte, Y_TEXTE_TEMPS, texte);
-    display.drawVLine(x, G_BAS + 1, 2);
-    for (uint8_t y = G_HAUT; y < G_BAS; y += 3) display.drawPixel(x, y);
-}
-
-void afficher_graphe_bpm() {
-    // Le graphe se remplit de gauche a droite, puis defile.
-    const uint16_t fenetre = FENETRES_S[zoom] * POINTS_PAR_SECONDE;
-    const uint32_t debut = nb_points_total > fenetre ? nb_points_total - fenetre : 0;
-    const uint16_t pas = GRADUATIONS_S[zoom] * POINTS_PAR_SECONDE;
-    const uint32_t premiere_graduation = (debut + pas - 1) / pas * pas;
-
-    // Echelle verticale automatique, arrondie a la dizaine, 20 BPM minimum.
-    uint8_t mini = 255;
-    uint8_t maxi = 0;
-    for (uint32_t k = debut; k < nb_points_total; ++k) {
-        const uint8_t v = historique[k % TAILLE_HISTORIQUE];
-        if (v == 0) continue;
-        if (v < mini) mini = v;
-        if (v > maxi) maxi = v;
+    // "72 BPM" a gauche, largeur de la fenetre a droite ("2.3s").
+    char texte_bpm[8];
+    if (bpm == 0) {
+        strcpy_P(texte_bpm, PSTR("--"));
+    } else {
+        utoa(bpm, texte_bpm, 10);
     }
-    int bas = 60;
-    int haut = 100;
-    if (maxi > 0) {
-        bas = max(0, (mini - 5) / 10 * 10);
-        haut = (maxi + 14) / 10 * 10;
-        if (haut - bas < 20) {
-            bas = max(0, bas - 10);
-            haut += 10;
-        }
-    }
+    strcat_P(texte_bpm, PSTR(" BPM"));
 
-    char texte_zoom[8] = "zoom ";
-    utoa(FENETRES_S[zoom], texte_zoom + 5, 10);
-    strcat(texte_zoom, "s");
+    const uint16_t dixiemes = ((uint32_t)ms_par_colonne * LARGEUR_TRACE + 50) / 100;
+    char texte_zoom[8];
+    utoa(dixiemes / 10, texte_zoom, 10);
+    char* p = texte_zoom + strlen(texte_zoom);
+    *p++ = '.';
+    *p++ = '0' + dixiemes % 10;
+    *p++ = 's';
+    *p = '\0';
 
     display.setFont(u8g2_font_4x6_tr);
     display.setFontPosTop();
     display.setFontMode(0);
     display.setDrawColor(1);
 
+    char texte[6];
     display.firstPage();
     do {
-        display.drawStr(0, 0, "BPM");
+        display.drawStr(G_X + 2, 0, texte_bpm);
         display.drawStr(SCREEN_WIDTH - display.getStrWidth(texte_zoom), 0, texte_zoom);
-        display.drawStr(0, Y_TEXTE_TEMPS, "t(s)");
 
+        // Axes.
         display.drawVLine(G_X, G_HAUT, G_BAS - G_HAUT + 1);
         display.drawHLine(G_X, G_BAS, SCREEN_WIDTH - G_X);
 
-        graduation_bpm(bas, bas, haut);
-        graduation_bpm((bas + haut) / 2, bas, haut);
-        graduation_bpm(haut, bas, haut);
-        for (uint32_t k = premiere_graduation; k <= debut + fenetre; k += pas) {
-            graduation_temps(k, debut, fenetre);
+        // Graduation fixe a gauche : -200, 0, 200 (seuil de detection), 400.
+        for (int16_t v = SIGNAL_BAS; v <= SIGNAL_HAUT; v += PAS_GRADUATION) {
+            const int16_t y = y_signal(v);
+            itoa(v, texte, 10);
+            display.drawStr(G_X - 2 - display.getStrWidth(texte), y - 2, texte);
+            display.drawPixel(G_X - 1, y);
+            for (uint8_t x = G_X + 4; x < SCREEN_WIDTH; x += 4) display.drawPixel(x, y);
         }
 
-        // Courbe : interrompue la ou il n'y avait pas de mesure.
-        bool precedent = false;
-        int16_t x_prec = 0;
-        int16_t y_prec = 0;
-        for (uint32_t k = debut; k < nb_points_total; ++k) {
-            const uint8_t v = historique[k % TAILLE_HISTORIQUE];
-            if (v == 0) {
-                precedent = false;
-                continue;
-            }
-            const int16_t x = x_point(k, debut, fenetre);
-            const int16_t y = y_bpm(v, bas, haut);
-            if (precedent) {
-                display.drawLine(x_prec, y_prec, x, y);
-            } else {
-                display.drawPixel(x, y);
-            }
-            x_prec = x;
-            y_prec = y;
-            precedent = true;
+        // Graduations toutes les secondes depuis le bord gauche du balayage.
+        for (uint8_t s = 0;; ++s) {
+            const uint16_t colonne = (uint32_t)s * 1000 / ms_par_colonne;
+            if (colonne >= LARGEUR_TRACE) break;
+            const uint8_t x = G_X + 1 + colonne;
+            display.drawVLine(x, G_BAS + 1, 2);
+            for (uint8_t y = G_HAUT; y < G_BAS; y += 4) display.drawPixel(x, y);
+            utoa(s, texte, 10);
+            strcat_P(texte, PSTR("s"));
+            display.drawStr(s == 0 ? G_X + 1 : x - display.getStrWidth(texte) / 2,
+                            Y_TEXTE_TEMPS, texte);
+        }
+
+        // Trace : un segment entre chaque colonne voisine, sauf dans le trou.
+        for (uint8_t c = 1; c < LARGEUR_TRACE; ++c) {
+            const int8_t a = trace[c - 1];
+            const int8_t b = trace[c];
+            if (a == PAS_DE_DONNEE || b == PAS_DE_DONNEE) continue;
+            if (dans_le_trou(c) || dans_le_trou(c - 1)) continue;
+            display.drawLine(G_X + c, y_signal(a * DIVISEUR_SIGNAL_TRACE),
+                             G_X + 1 + c, y_signal(b * DIVISEUR_SIGNAL_TRACE));
         }
     } while (display.nextPage());
 }
@@ -310,7 +311,7 @@ void afficher_confirmation_effacement() {
     } while (display.nextPage());
 }
 
-void print_bpm_screen(uint8_t bpm) {
+void print_bpm_screen(uint8_t bpm, const char* heure) {
     char valeur[4];
     if (bpm == 0) {
         strcpy(valeur, "--");
@@ -326,12 +327,18 @@ void print_bpm_screen(uint8_t bpm) {
     const int16_t x_valeur = (SCREEN_WIDTH - display_second.getStrWidth(valeur)) / 2;
     display_second.setFont(u8g2_font_6x12_tf);
     const int16_t x_unite = (SCREEN_WIDTH - display_second.getStrWidth(unite)) / 2;
+    display_second.setFont(u8g2_font_5x7_tr);
+    const int16_t x_heure = (SCREEN_WIDTH - display_second.getStrWidth(heure)) / 2;
 
+    // Heure en haut, BPM en grand au milieu, unite en bas.
     display_second.firstPage();
     do {
+        display_second.setFont(u8g2_font_5x7_tr);
+        display_second.drawStr(x_heure, 0, heure);
+        display_second.drawHLine(0, 9, SCREEN_WIDTH);
         display_second.setFont(u8g2_font_logisoso32_tn);
-        display_second.drawStr(x_valeur, 6, valeur);
+        display_second.drawStr(x_valeur, 13, valeur);
         display_second.setFont(u8g2_font_6x12_tf);
-        display_second.drawStr(x_unite, 48, unite);
+        display_second.drawStr(x_unite, 51, unite);
     } while (display_second.nextPage());
 }

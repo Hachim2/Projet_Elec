@@ -18,7 +18,7 @@ void afficherDeuxChiffres(uint8_t valeur) {
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   rtc.Begin();
 
   rtc.SetIsWriteProtected(false);

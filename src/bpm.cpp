@@ -34,6 +34,13 @@ volatile uint16_t intervalle_detecte = 0;
 volatile bool nouveau_battement = false;
 volatile bool battement_a_signaler = false; // Pour le bip du buzzer.
 
+// File des echantillons du signal pour le trace (32 x 5 ms = 160 ms de
+// marge pendant les dessins d'ecran).
+constexpr uint8_t TAILLE_FILE_SIGNAL = 32; // Puissance de 2.
+volatile int8_t file_signal[TAILLE_FILE_SIGNAL];
+volatile uint8_t file_ecriture = 0; // Avance dans l'interruption.
+uint8_t file_lecture = 0;           // Avance dans la boucle principale.
+
 // Utilise uniquement dans l'interruption.
 int valeurs[TAILLE_MOYENNE];
 int32_t somme = 0;
@@ -83,10 +90,15 @@ ISR(TIMER1_COMPA_vect) {
     valeurs[indice] = brut;
     if (++indice >= TAILLE_MOYENNE) indice = 0;
 
-    if (temps_ms < STABILISATION_MS) return;
-
     // 2. Recentrage du signal.
     const int signal = brut - static_cast<int>(somme / TAILLE_MOYENNE);
+
+    // Echantillon pour le trace facon moniteur d'hopital.
+    file_signal[file_ecriture % TAILLE_FILE_SIGNAL] =
+        constrain(signal / DIVISEUR_SIGNAL_TRACE, -127, 127);
+    ++file_ecriture;
+
+    if (temps_ms < STABILISATION_MS) return;
 
     // 3. Rearmer apres la descente sous le seuil bas.
     if (signal <= SEUIL_BAS) {
@@ -181,6 +193,22 @@ float actualiser_bpm() {
     Serial.println(bpm);
 #endif
     return bpm;
+}
+
+bool lire_echantillon_signal(int8_t* valeur) {
+    uint8_t ecriture;
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        ecriture = file_ecriture;
+    }
+    if (file_lecture == ecriture) return false;
+
+    // Boucle trop lente : on saute les echantillons deja ecrases.
+    if (static_cast<uint8_t>(ecriture - file_lecture) > TAILLE_FILE_SIGNAL) {
+        file_lecture = ecriture - TAILLE_FILE_SIGNAL;
+    }
+    *valeur = file_signal[file_lecture % TAILLE_FILE_SIGNAL];
+    ++file_lecture;
+    return true;
 }
 
 bool battement_detecte() {
