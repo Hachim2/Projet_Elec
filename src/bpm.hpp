@@ -14,6 +14,11 @@ float actualiser_bpm();
 // Derniere valeur calculee par actualiser_bpm(), sans traitement.
 float lire_bpm();
 
+// Nombre d'intervalles dans la moyenne (0 a NB_INTERVALLES_BPM). Le BPM
+// n'est enregistre que quand la moyenne porte sur les 10.
+constexpr uint8_t NB_INTERVALLES_BPM = 10;
+uint8_t nombre_intervalles_bpm();
+
 // Echantillons du signal recentre (un toutes les 5 ms), divises par
 // DIVISEUR_SIGNAL_TRACE pour tenir sur un octet : +-508 en unites ADC.
 // Renvoie false quand il n'y en a plus en attente.

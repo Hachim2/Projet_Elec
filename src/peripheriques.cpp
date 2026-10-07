@@ -1,5 +1,6 @@
 #include "peripheriques.hpp"
 #include "setup.hpp"
+#include "donnees.hpp"
 
 namespace {
 constexpr unsigned long DUREE_BIP_MS = 40;
@@ -7,10 +8,12 @@ constexpr unsigned long ANTI_REBOND_MS = 30;
 
 // Limites des zones de BPM.
 constexpr uint8_t BPM_BAS = 60;  // En dessous : jaune.
-constexpr uint8_t BPM_HAUT = 90; // Au-dessus : rouge.
+constexpr uint8_t BPM_HAUT = 100; // Au-dessus : rouge.
 
-bool bip_en_cours = false;
-unsigned long debut_bip = 0;
+// Hauteur du bip selon la zone (Hz) : plus grave quand le coeur est lent.
+constexpr unsigned int FREQUENCE_LENT = 500;
+constexpr unsigned int FREQUENCE_NORMAL = 2000;
+constexpr unsigned int FREQUENCE_RAPIDE = 4000;
 
 int derniere_lecture = !BTN_RETOUR_APPUI;
 int etat_stable = !BTN_RETOUR_APPUI;
@@ -32,21 +35,19 @@ void init_peripheriques() {
     dernier_changement = millis();
 }
 
-void bip_buzzer() {
-    digitalWrite(BUZZER, HIGH);
-    bip_en_cours = true;
-    debut_bip = millis();
-}
+void bip_buzzer(uint8_t bpm) {
+    if (!reglages.son) return;
 
-void actualiser_buzzer() {
-    if (bip_en_cours && millis() - debut_bip >= DUREE_BIP_MS) {
-        digitalWrite(BUZZER, LOW);
-        bip_en_cours = false;
-    }
+    unsigned int frequence = FREQUENCE_NORMAL; // Aussi tant que bpm vaut 0.
+    if (bpm > 0 && bpm < BPM_BAS) frequence = FREQUENCE_LENT;
+    if (bpm > BPM_HAUT) frequence = FREQUENCE_RAPIDE;
+
+    // tone() (Timer2) coupe le son tout seul apres DUREE_BIP_MS.
+    tone(BUZZER, frequence, DUREE_BIP_MS);
 }
 
 void afficher_zone_bpm(uint8_t bpm) {
-    const bool mesure = bpm > 0;
+    const bool mesure = bpm > 0 && reglages.leds;
     digitalWrite(LED_JAUNE, mesure && bpm < BPM_BAS);
     digitalWrite(LED_VERTE, mesure && bpm >= BPM_BAS && bpm <= BPM_HAUT);
     digitalWrite(LED_ROUGE, mesure && bpm > BPM_HAUT);

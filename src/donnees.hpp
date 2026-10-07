@@ -45,6 +45,18 @@ void formater_enregistrement(const Enregistrement& e, char* texte);
 constexpr uint8_t TAILLE_TEXTE_HEURE = 20;
 bool formater_heure_actuelle(char* texte);
 
+// Reglages de la page "Reglages", gardes dans l'EEPROM apres les mesures.
+enum : uint8_t { CONTRASTE_FAIBLE, CONTRASTE_MOYEN, CONTRASTE_FORT, NB_CONTRASTES };
+struct Reglages {
+    bool son;          // Bip a chaque battement.
+    bool leds;         // LEDs de zone.
+    uint8_t contraste; // CONTRASTE_xxx, pour les deux ecrans.
+};
+extern Reglages reglages;
+
+// Ecrit les reglages actuels dans l'EEPROM (charges par init_donnees).
+void sauver_reglages();
+
 // A appeler dans loop() : regle l'horloge quand on envoie sur le port
 // serie (115200 bauds) une ligne "AAAA-MM-JJ HH:MM:SS" puis Entree.
 void actualiser_reglage_serie();

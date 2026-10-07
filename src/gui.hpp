@@ -3,11 +3,15 @@
 
 #include <stdint.h>
 
-constexpr uint8_t GEN_MENU_SIZE = 3;
+constexpr uint8_t GEN_MENU_SIZE = 4;
 
-// selected : 0, 1 ou 2. Un indice invalide affiche le premier choix.
+// selected : 0 a 3. Un indice invalide affiche le premier choix.
 // Dessine le menu complet ; aucune action ni lecture de l'encodeur.
 void print_gen_menu(uint8_t selected);
+
+// Page "Reglages" : Son, LEDs, Contraste, avec leur valeur a droite.
+constexpr uint8_t NB_REGLAGES = 3;
+void afficher_reglages(uint8_t selection);
 
 // Graphique (ecran 1) : trace du signal du capteur facon moniteur
 // d'hopital, balayage de gauche a droite, temps en secondes en abscisse.

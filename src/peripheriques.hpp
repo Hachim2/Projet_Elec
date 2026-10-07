@@ -6,13 +6,12 @@
 // Buzzer, LEDs de zone et bouton retour. Broches definies dans setup.hpp.
 void init_peripheriques();
 
-// Lance un bip court ; il s'arrete tout seul dans actualiser_buzzer().
-void bip_buzzer();
-
-// A appeler dans loop() : coupe le buzzer a la fin du bip, sans delay().
-void actualiser_buzzer();
+// Bip court, sauf si le son est coupe dans les reglages. Hauteur selon la
+// zone : grave < 60 BPM, moyenne de 60 a 90 (ou BPM inconnu), aigue > 90.
+void bip_buzzer(uint8_t bpm);
 
 // 0 : tout eteint, < 60 : jaune, 60 a 90 : verte, > 90 : rouge.
+// Tout eteint aussi si les LEDs sont coupees dans les reglages.
 void afficher_zone_bpm(uint8_t bpm);
 
 // Renvoie true une fois au relachement du bouton retour (rebonds filtres).

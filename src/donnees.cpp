@@ -9,15 +9,22 @@ namespace {
 //   0 : octet de controle (EEPROM neuve = 0xFF partout)
 //   1 : nombre de mesures
 //   2 : mesures, 5 octets chacune (bpm puis secondes)
+//   1020 : octet de controle des reglages, puis les reglages
 constexpr int ADRESSE_CONTROLE = 0;
 constexpr int ADRESSE_NOMBRE = 1;
 constexpr int ADRESSE_MESURES = 2;
 constexpr uint8_t TAILLE_MESURE = 5;
 constexpr uint8_t VALEUR_CONTROLE = 0xB7;
+constexpr int ADRESSE_CONTROLE_REGLAGES = 1020;
+constexpr int ADRESSE_REGLAGES = ADRESSE_CONTROLE_REGLAGES + 1;
+constexpr uint8_t VALEUR_CONTROLE_REGLAGES = 0xA1;
 
 // Retard approximatif entre la compilation et le demarrage de la carte (s).
 constexpr uint32_t DECALAGE_TELEVERSEMENT_S = 28;
-static_assert(ADRESSE_MESURES + NB_MAX_ENREGISTREMENTS * TAILLE_MESURE <= 1024,
+static_assert(ADRESSE_MESURES + NB_MAX_ENREGISTREMENTS * TAILLE_MESURE <=
+                  ADRESSE_CONTROLE_REGLAGES,
+              "Les mesures empietent sur les reglages.");
+static_assert(ADRESSE_REGLAGES + sizeof(Reglages) <= 1024,
               "L'ATmega328P n'a que 1 Ko d'EEPROM.");
 
 // Le quartz du module DS1302 avance (mesure : +17 s en 21 h 50, soit ~216 ppm).
@@ -164,6 +171,21 @@ void init_donnees() {
         effacer_enregistrements();
     }
     nombre = min(EEPROM.read(ADRESSE_NOMBRE), NB_MAX_ENREGISTREMENTS);
+
+    // EEPROM neuve ou valeurs incoherentes : on garde les reglages par defaut.
+    Reglages lus;
+    EEPROM.get(ADRESSE_REGLAGES, lus);
+    if (EEPROM.read(ADRESSE_CONTROLE_REGLAGES) == VALEUR_CONTROLE_REGLAGES &&
+        lus.contraste < NB_CONTRASTES) {
+        reglages = lus;
+    }
+}
+
+Reglages reglages = {true, true, CONTRASTE_FORT};
+
+void sauver_reglages() {
+    EEPROM.put(ADRESSE_REGLAGES, reglages);
+    EEPROM.update(ADRESSE_CONTROLE_REGLAGES, VALEUR_CONTROLE_REGLAGES);
 }
 
 Resultat enregistrer_bpm(uint8_t bpm, Enregistrement* sauve) {

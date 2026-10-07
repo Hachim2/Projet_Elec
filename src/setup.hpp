@@ -32,7 +32,8 @@ constexpr uint8_t SW2BTN = 2;
 constexpr uint8_t BTN_RETOUR = 9;
 constexpr uint8_t BTN_RETOUR_APPUI = LOW;
 
-// Buzzer actif : HIGH = son. Un bip a chaque battement.
+// Buzzer pilote par tone() : un bip a chaque battement, a 3 hauteurs.
+// Un buzzer passif est necessaire pour entendre nettement les 3 hauteurs.
 constexpr uint8_t BUZZER = 5;
 
 // LEDs de zone : jaune < 60 BPM, verte 60-90 BPM, rouge > 90 BPM.
@@ -50,5 +51,8 @@ extern U8G2_SSD1306_128X64_NONAME_1_HW_I2C display;
 extern U8G2_SSD1306_128X64_NONAME_1_HW_I2C display_second;
 
 void init_hardware();
+
+// Applique reglages.contraste aux deux ecrans.
+void appliquer_contraste();
 
 #endif

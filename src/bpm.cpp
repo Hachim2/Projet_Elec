@@ -22,7 +22,7 @@ constexpr uint16_t INTERVALLE_MAX = 2000;
 constexpr uint16_t DELAI_SANS_BATTEMENT = 2500;
 
 // --- Moyenne glissante du BPM ---
-constexpr uint8_t NB_INTERVALLES = 10;
+constexpr uint8_t NB_INTERVALLES = NB_INTERVALLES_BPM;
 constexpr uint8_t NB_MIN_POUR_FILTRE = 3;  // Avant, tout intervalle valide compte.
 constexpr uint8_t ECART_MAX_POURCENT = 30; // Rejet si trop loin de la moyenne.
 constexpr uint8_t REJETS_AVANT_RESET = 3;  // Le rythme a vraiment change.
@@ -222,4 +222,8 @@ bool battement_detecte() {
 
 float lire_bpm() {
     return bpm;
+}
+
+uint8_t nombre_intervalles_bpm() {
+    return nombre_intervalles;
 }

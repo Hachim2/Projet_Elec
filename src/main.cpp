@@ -16,14 +16,16 @@ static constexpr unsigned long PERIODE_HEURE_MS = 200;
 static constexpr unsigned long PERIODE_TRACE_MS = 50;
 
 // Entrees du menu principal, dans l'ordre de GEN_MENU (gui.cpp).
-enum ChoixMenu : uint8_t { GRAPHIQUE = 0, MES_DONNEES = 1, ENREGISTRER = 2 };
+enum ChoixMenu : uint8_t { GRAPHIQUE = 0, MES_DONNEES = 1, ENREGISTRER = 2, REGLAGES = 3 };
 
-enum class Page : uint8_t { Menu, Graphe, Donnees, ConfirmerEffacement, Message };
+enum class Page : uint8_t { Menu, Graphe, Donnees, ConfirmerEffacement, Message, Reglages };
 
 static Page page = Page::Menu;
 static int gen_selected = GRAPHIQUE;
 static int previous_selected = GRAPHIQUE;
 static int selection_donnees = 0;
+static int selection_reglage = 0;
+static int reglage_precedent = 0;
 static unsigned long dernier_trace = 0;
 static unsigned long debut_message = 0;
 static unsigned long derniere_lecture_heure = 0;
@@ -43,6 +45,31 @@ static void ouvrir_donnees() {
     afficher_donnees(selection_donnees);
 }
 
+static void ouvrir_reglages() {
+    page = Page::Reglages;
+    selection_reglage = 0;
+    reglage_precedent = 0;
+    afficher_reglages(selection_reglage);
+}
+
+// Clic sur un reglage : valeur suivante, appliquee et sauvee tout de suite.
+static void modifier_reglage(uint8_t i) {
+    switch (i) {
+    case 0:
+        reglages.son = !reglages.son;
+        break;
+    case 1:
+        reglages.leds = !reglages.leds;
+        bpm_affiche = 255; // Force la mise a jour des LEDs.
+        break;
+    case 2:
+        reglages.contraste = (reglages.contraste + 1) % NB_CONTRASTES;
+        appliquer_contraste();
+        break;
+    }
+    sauver_reglages();
+}
+
 static void ouvrir_message(PGM_P titre, const char* detail) {
     page = Page::Message;
     afficher_message(titre, detail);
@@ -52,6 +79,16 @@ static void ouvrir_message(PGM_P titre, const char* detail) {
 static void enregistrer(uint8_t bpm) {
     Enregistrement e;
     char detail[TAILLE_TEXTE_ENREGISTREMENT];
+
+    // Le BPM enregistre doit etre la moyenne de 10 intervalles consecutifs.
+    const uint8_t n = nombre_intervalles_bpm();
+    if (bpm != 0 && n < NB_INTERVALLES_BPM) {
+        strcpy_P(detail, PSTR("Battements : "));
+        utoa(n, detail + strlen(detail), 10);
+        strcat_P(detail, PSTR("/10"));
+        ouvrir_message(PSTR("Mesure en cours"), detail);
+        return;
+    }
 
     switch (enregistrer_bpm(bpm, &e)) {
     case Resultat::Ok:
@@ -90,6 +127,9 @@ static void valider_menu(uint8_t bpm) {
     case ENREGISTRER:
         enregistrer(bpm);
         break;
+    case REGLAGES:
+        ouvrir_reglages();
+        break;
     }
 }
 
@@ -99,6 +139,7 @@ void setup() {
     init_hardware();
     init_peripheriques();
     init_donnees();
+    appliquer_contraste();
     init_bpm();
     init_graphe();
     ouvrir_menu();
@@ -109,8 +150,7 @@ void loop() {
     const uint8_t bpm_entier = static_cast<uint8_t>(bpm + 0.5f);
 
     actualiser_reglage_serie();
-    if (battement_detecte()) bip_buzzer();
-    actualiser_buzzer();
+    if (battement_detecte()) bip_buzzer(bpm_entier);
 
     // Ecran 2 et LEDs : mis a jour seulement quand le BPM ou l'heure change.
     bool ecran2_a_jour = true;
@@ -198,6 +238,18 @@ void loop() {
         if (lire_bouton_encodeur() || retour ||
             millis() - debut_message >= DUREE_MESSAGE_MS) {
             ouvrir_menu();
+        }
+        break;
+
+    case Page::Reglages:
+        if (retour) {
+            ouvrir_menu();
+        } else if (lire_encodeur(&selection_reglage, NB_REGLAGES)) {
+            modifier_reglage(selection_reglage);
+            afficher_reglages(selection_reglage);
+        } else if (selection_reglage != reglage_precedent) {
+            reglage_precedent = selection_reglage;
+            afficher_reglages(selection_reglage);
         }
         break;
     }

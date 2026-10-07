@@ -11,9 +11,18 @@ static const char bpm_text[] PROGMEM = "BPM";
 static const char gen_0[] PROGMEM = "Graphique";
 static const char gen_1[] PROGMEM = "Mes donnees";
 static const char gen_2[] PROGMEM = "Enregistrer data";
-static const char* const GEN_MENU[] PROGMEM = {gen_0, gen_1, gen_2};
+static const char gen_3[] PROGMEM = "Reglages";
+static const char* const GEN_MENU[] PROGMEM = {gen_0, gen_1, gen_2, gen_3};
 static_assert(sizeof(GEN_MENU) / sizeof(GEN_MENU[0]) == GEN_MENU_SIZE,
               "GEN_MENU_SIZE doit correspondre au nombre de libelles.");
+
+// Page "Reglages", dans l'ordre de modifier_reglage().
+static const char reglage_0[] PROGMEM = "Son";
+static const char reglage_1[] PROGMEM = "LEDs";
+static const char reglage_2[] PROGMEM = "Contraste";
+static const char* const REGLAGES[] PROGMEM = {reglage_0, reglage_1, reglage_2};
+static_assert(sizeof(REGLAGES) / sizeof(REGLAGES[0]) == NB_REGLAGES,
+              "NB_REGLAGES doit correspondre au nombre de libelles.");
 
 // 20 caracteres maximum par libelle avec la police de 6 pixels.
 static constexpr uint8_t LABEL_SIZE = 21;
@@ -171,26 +180,45 @@ static void print_center_line(const char* text, uint8_t y) {
     display.drawStr(x, y, text);
 }
 
-static void draw_menu_page(uint8_t selected) {
+// Valeur affichee a droite d'un reglage ("Oui", "Fort"...), en Flash.
+static PGM_P valeur_reglage(uint8_t i) {
+    switch (i) {
+    case 0: return reglages.son ? PSTR("Oui") : PSTR("Non");
+    case 1: return reglages.leds ? PSTR("Oui") : PSTR("Non");
+    default:
+        if (reglages.contraste == CONTRASTE_FAIBLE) return PSTR("Faible");
+        if (reglages.contraste == CONTRASTE_MOYEN) return PSTR("Moyen");
+        return PSTR("Fort");
+    }
+}
+
+// Titre puis une ligne par libelle (4 au maximum), la selection surlignee.
+// Pour la page "Reglages", la valeur de chaque ligne est ecrite a droite.
+static void draw_liste(PGM_P titre, const char* const* libelles, uint8_t nb,
+                       uint8_t selected, bool avec_valeurs) {
     char text[LABEL_SIZE];
     display.setFont(u8g2_font_6x12_tf);
     display.setFontPosTop();
     display.setFontMode(1); // Fond transparent pour le texte surligne.
     display.setDrawColor(1);
 
-    load_label(menu_title, text);
+    load_label(titre, text);
     print_center_line(text, 0);
-    display.drawHLine(0, 14, SCREEN_WIDTH);
+    display.drawHLine(0, 13, SCREEN_WIDTH);
 
-    for (uint8_t i = 0; i < GEN_MENU_SIZE; ++i) {
-        const uint8_t y = 18 + i * 15;
-        load_label(reinterpret_cast<PGM_P>(pgm_read_ptr(&GEN_MENU[i])), text);
+    for (uint8_t i = 0; i < nb; ++i) {
+        const uint8_t y = 16 + i * 12;
+        load_label(reinterpret_cast<PGM_P>(pgm_read_ptr(&libelles[i])), text);
 
         if (i == selected) {
-            display.drawBox(0, y, SCREEN_WIDTH, 14);
+            display.drawBox(0, y, SCREEN_WIDTH, 12);
             display.setDrawColor(0); // Texte noir sur fond blanc.
         }
-        display.drawStr(4, y + 1, text);
+        display.drawStr(4, y, text);
+        if (avec_valeurs) {
+            load_label(valeur_reglage(i), text);
+            display.drawStr(SCREEN_WIDTH - 4 - display.getStrWidth(text), y, text);
+        }
         display.setDrawColor(1);
     }
 }
@@ -201,7 +229,14 @@ void print_gen_menu(uint8_t selected) {
     display.firstPage();
     do {
         // Meme image pour toutes les pages : pas de lecture de capteur ici.
-        draw_menu_page(selected);
+        draw_liste(menu_title, GEN_MENU, GEN_MENU_SIZE, selected, false);
+    } while (display.nextPage());
+}
+
+void afficher_reglages(uint8_t selection) {
+    display.firstPage();
+    do {
+        draw_liste(PSTR("Reglages"), REGLAGES, NB_REGLAGES, selection, true);
     } while (display.nextPage());
 }
 
