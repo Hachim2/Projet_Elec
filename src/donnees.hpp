@@ -48,7 +48,7 @@ bool formater_heure_actuelle(char* texte);
 // Reglages de la page "Reglages", gardes dans l'EEPROM apres les mesures.
 enum : uint8_t { CONTRASTE_FAIBLE, CONTRASTE_MOYEN, CONTRASTE_FORT, NB_CONTRASTES };
 struct Reglages {
-    bool son;          // Bip a chaque battement.
+    bool son;          // Bip a chaque battement (bouton D13).
     bool leds;         // LEDs de zone.
     uint8_t contraste; // CONTRASTE_xxx, pour les deux ecrans.
 };

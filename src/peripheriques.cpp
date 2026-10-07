@@ -15,9 +15,42 @@ constexpr unsigned int FREQUENCE_LENT = 500;
 constexpr unsigned int FREQUENCE_NORMAL = 1000;
 constexpr unsigned int FREQUENCE_RAPIDE = 2000;
 
-int derniere_lecture = !BTN_RETOUR_APPUI;
-int etat_stable = !BTN_RETOUR_APPUI;
-unsigned long dernier_changement = 0;
+// Bouton poussoir avec anti-rebond, action au relachement.
+struct Bouton {
+    uint8_t broche;
+    uint8_t niveau_appui; // LOW : rappel interne, HIGH : tirage externe vers GND.
+    int derniere_lecture;
+    int etat_stable;
+    unsigned long dernier_changement;
+};
+
+Bouton bouton_retour = {BTN_RETOUR, BTN_RETOUR_APPUI, 0, 0, 0};
+Bouton bouton_son = {BTN_SON, BTN_SON_APPUI, 0, 0, 0};
+
+void init_bouton(Bouton& b) {
+    pinMode(b.broche, b.niveau_appui == LOW ? INPUT_PULLUP : INPUT);
+    b.derniere_lecture = digitalRead(b.broche);
+    b.etat_stable = b.derniere_lecture;
+    b.dernier_changement = millis();
+}
+
+// Renvoie true une fois au relachement (rebonds filtres).
+bool bouton_relache(Bouton& b) {
+    const int lecture = digitalRead(b.broche);
+    const unsigned long maintenant = millis();
+    if (lecture != b.derniere_lecture) {
+        b.derniere_lecture = lecture;
+        b.dernier_changement = maintenant;
+    }
+
+    if (lecture == b.etat_stable || maintenant - b.dernier_changement < ANTI_REBOND_MS) {
+        return false;
+    }
+
+    // Comme l'encodeur : l'action a lieu au relachement.
+    b.etat_stable = lecture;
+    return b.etat_stable != b.niveau_appui;
+}
 }
 
 void init_peripheriques() {
@@ -29,10 +62,8 @@ void init_peripheriques() {
     pinMode(LED_JAUNE, OUTPUT);
     afficher_zone_bpm(0);
 
-    pinMode(BTN_RETOUR, BTN_RETOUR_APPUI == LOW ? INPUT_PULLUP : INPUT);
-    derniere_lecture = digitalRead(BTN_RETOUR);
-    etat_stable = derniere_lecture;
-    dernier_changement = millis();
+    init_bouton(bouton_retour);
+    init_bouton(bouton_son);
 }
 
 void bip_buzzer(uint8_t bpm) {
@@ -54,18 +85,11 @@ void afficher_zone_bpm(uint8_t bpm) {
 }
 
 bool lire_bouton_retour() {
-    const int lecture = digitalRead(BTN_RETOUR);
-    const unsigned long maintenant = millis();
-    if (lecture != derniere_lecture) {
-        derniere_lecture = lecture;
-        dernier_changement = maintenant;
-    }
+    return bouton_relache(bouton_retour);
+}
 
-    if (lecture == etat_stable || maintenant - dernier_changement < ANTI_REBOND_MS) {
-        return false;
-    }
-
-    // Comme l'encodeur : l'action a lieu au relachement.
-    etat_stable = lecture;
-    return etat_stable != BTN_RETOUR_APPUI;
+void actualiser_bouton_son() {
+    if (!bouton_relache(bouton_son)) return;
+    reglages.son = !reglages.son;
+    sauver_reglages();
 }

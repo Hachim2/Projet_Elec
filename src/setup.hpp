@@ -32,11 +32,18 @@ constexpr uint8_t SW2BTN = 2;
 constexpr uint8_t BTN_RETOUR = 9;
 constexpr uint8_t BTN_RETOUR_APPUI = LOW;
 
+// Bouton son on/off sur D13. La LED de la carte (avec sa resistance) tire
+// D13 vers GND : le rappel interne ne monte qu'a ~1,7 V, illisible. Le
+// bouton est donc cable entre 5V et D13, avec 10 kOhm entre D13 et GND.
+// La LED de la carte s'allume pendant l'appui.
+constexpr uint8_t BTN_SON = 13;
+constexpr uint8_t BTN_SON_APPUI = HIGH;
+
 // Buzzer pilote par tone() : un bip a chaque battement, a 3 hauteurs.
 // Un buzzer passif est necessaire pour entendre nettement les 3 hauteurs.
 constexpr uint8_t BUZZER = 5;
 
-// LEDs de zone : jaune < 60 BPM, verte 60-90 BPM, rouge > 90 BPM.
+// LEDs de zone : jaune < 60 BPM, verte 60-100 BPM, rouge > 100 BPM.
 constexpr uint8_t LED_ROUGE = 8;
 constexpr uint8_t LED_VERTE = 7;
 constexpr uint8_t LED_JAUNE = 6;

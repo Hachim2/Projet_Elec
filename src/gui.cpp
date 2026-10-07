@@ -17,10 +17,9 @@ static_assert(sizeof(GEN_MENU) / sizeof(GEN_MENU[0]) == GEN_MENU_SIZE,
               "GEN_MENU_SIZE doit correspondre au nombre de libelles.");
 
 // Page "Reglages", dans l'ordre de modifier_reglage().
-static const char reglage_0[] PROGMEM = "Son";
-static const char reglage_1[] PROGMEM = "LEDs";
-static const char reglage_2[] PROGMEM = "Contraste";
-static const char* const REGLAGES[] PROGMEM = {reglage_0, reglage_1, reglage_2};
+static const char reglage_0[] PROGMEM = "LEDs";
+static const char reglage_1[] PROGMEM = "Contraste";
+static const char* const REGLAGES[] PROGMEM = {reglage_0, reglage_1};
 static_assert(sizeof(REGLAGES) / sizeof(REGLAGES[0]) == NB_REGLAGES,
               "NB_REGLAGES doit correspondre au nombre de libelles.");
 
@@ -183,8 +182,7 @@ static void print_center_line(const char* text, uint8_t y) {
 // Valeur affichee a droite d'un reglage ("Oui", "Fort"...), en Flash.
 static PGM_P valeur_reglage(uint8_t i) {
     switch (i) {
-    case 0: return reglages.son ? PSTR("Oui") : PSTR("Non");
-    case 1: return reglages.leds ? PSTR("Oui") : PSTR("Non");
+    case 0: return reglages.leds ? PSTR("Oui") : PSTR("Non");
     default:
         if (reglages.contraste == CONTRASTE_FAIBLE) return PSTR("Faible");
         if (reglages.contraste == CONTRASTE_MOYEN) return PSTR("Moyen");

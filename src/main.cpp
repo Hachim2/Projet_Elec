@@ -56,13 +56,10 @@ static void ouvrir_reglages() {
 static void modifier_reglage(uint8_t i) {
     switch (i) {
     case 0:
-        reglages.son = !reglages.son;
-        break;
-    case 1:
         reglages.leds = !reglages.leds;
         bpm_affiche = 255; // Force la mise a jour des LEDs.
         break;
-    case 2:
+    case 1:
         reglages.contraste = (reglages.contraste + 1) % NB_CONTRASTES;
         appliquer_contraste();
         break;
@@ -150,6 +147,7 @@ void loop() {
     const uint8_t bpm_entier = static_cast<uint8_t>(bpm + 0.5f);
 
     actualiser_reglage_serie();
+    actualiser_bouton_son();
     if (battement_detecte()) bip_buzzer(bpm_entier);
 
     // Ecran 2 et LEDs : mis a jour seulement quand le BPM ou l'heure change.
