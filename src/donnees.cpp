@@ -20,6 +20,19 @@ constexpr uint32_t DECALAGE_TELEVERSEMENT_S = 28;
 static_assert(ADRESSE_MESURES + NB_MAX_ENREGISTREMENTS * TAILLE_MESURE <= 1024,
               "L'ATmega328P n'a que 1 Ko d'EEPROM.");
 
+// Le quartz du module DS1302 avance (mesure : +17 s en 21 h 50, soit ~216 ppm).
+// On retire 1 s chaque fois que le RTC a compte cet intervalle.
+// Intervalle = duree de la mesure (s) / avance mesuree (s). Pour affiner,
+// mesurer sur plusieurs jours.
+constexpr uint32_t INTERVALLE_CORRECTION_S = (21UL * 3600 + 50 * 60) / 17;
+
+// RAM du DS1302 (sauvegardee par la pile) :
+//   0 : octet de controle
+//   1 : date de la derniere correction (uint32_t, secondes depuis 2000)
+constexpr uint8_t RAM_CONTROLE = 0;
+constexpr uint8_t RAM_REFERENCE = 1;
+constexpr uint8_t VALEUR_CONTROLE_RAM = 0x5C;
+
 // Ordre : DAT, CLK, CE (comme dans rtc_test.cpp).
 ThreeWire liaison(RTC_DAT, RTC_CLK, RTC_CE);
 RtcDS1302<ThreeWire> rtc(liaison);
@@ -44,11 +57,49 @@ void ecrire_trois_nombres(char* texte, uint8_t a, uint8_t b, uint8_t c, char sep
     ecrire_deux_chiffres(texte + 6, c);
 }
 
+void ecrire_reference(uint32_t secondes) {
+    uint8_t octets[5] = {VALEUR_CONTROLE_RAM};
+    memcpy(octets + RAM_REFERENCE, &secondes, sizeof(secondes));
+    rtc.SetMemory(octets, sizeof(octets));
+}
+
+bool lire_reference(uint32_t* secondes) {
+    uint8_t octets[5];
+    rtc.GetMemory(octets, sizeof(octets));
+    if (octets[RAM_CONTROLE] != VALEUR_CONTROLE_RAM) return false;
+    memcpy(secondes, octets + RAM_REFERENCE, sizeof(*secondes));
+    return true;
+}
+
 void regler_horloge(const RtcDateTime& date) {
     rtc.SetIsWriteProtected(false);
     rtc.SetTrickleChargeSettings(DS1302Tcr_Disabled); // Pas de recharge de la pile.
     rtc.SetDateTime(date);
     rtc.SetIsRunning(true);
+    ecrire_reference(date.TotalSeconds());
+}
+
+// Lit l'heure du RTC en compensant l'avance du quartz. Apres une longue
+// coupure (horloge sur pile), plusieurs secondes sont retirees d'un coup.
+RtcDateTime lire_heure_corrigee() {
+    RtcDateTime maintenant = rtc.GetDateTime();
+    uint32_t reference;
+    if (!lire_reference(&reference) || maintenant.TotalSeconds() < reference) {
+        // Reference absente ou incoherente : on repart de maintenant.
+        ecrire_reference(maintenant.TotalSeconds());
+        return maintenant;
+    }
+
+    const uint32_t ecoule = maintenant.TotalSeconds() - reference;
+    const uint32_t retard = ecoule / INTERVALLE_CORRECTION_S;
+    if (retard > 0) {
+        maintenant -= retard;
+        rtc.SetDateTime(maintenant);
+        // Les secondes comptees depuis la derniere correction restent a
+        // compenser plus tard.
+        ecrire_reference(reference + retard * (INTERVALLE_CORRECTION_S - 1));
+    }
+    return maintenant;
 }
 
 // Ligne recue sur le port serie, en attente du retour a la ligne.
@@ -122,7 +173,7 @@ Resultat enregistrer_bpm(uint8_t bpm, Enregistrement* sauve) {
         return Resultat::HorlogeInvalide;
     }
 
-    const Enregistrement e = {bpm, rtc.GetDateTime().TotalSeconds()};
+    const Enregistrement e = {bpm, lire_heure_corrigee().TotalSeconds()};
     EEPROM.update(adresse(nombre), e.bpm);
     EEPROM.put(adresse(nombre) + 1, e.secondes);
 
@@ -176,7 +227,7 @@ bool formater_heure_actuelle(char* texte) {
         strcpy_P(texte, PSTR("--:--:--   --/--/--"));
         return false;
     }
-    ecrire_heure_date(texte, rtc.GetDateTime(), "   ");
+    ecrire_heure_date(texte, lire_heure_corrigee(), "   ");
     return true;
 }
 
