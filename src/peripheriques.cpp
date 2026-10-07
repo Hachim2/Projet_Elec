@@ -12,8 +12,8 @@ constexpr uint8_t BPM_HAUT = 100; // Au-dessus : rouge.
 
 // Hauteur du bip selon la zone (Hz) : plus grave quand le coeur est lent.
 constexpr unsigned int FREQUENCE_LENT = 500;
-constexpr unsigned int FREQUENCE_NORMAL = 2000;
-constexpr unsigned int FREQUENCE_RAPIDE = 4000;
+constexpr unsigned int FREQUENCE_NORMAL = 1000;
+constexpr unsigned int FREQUENCE_RAPIDE = 2000;
 
 int derniere_lecture = !BTN_RETOUR_APPUI;
 int etat_stable = !BTN_RETOUR_APPUI;
