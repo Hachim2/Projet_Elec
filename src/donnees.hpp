@@ -47,12 +47,17 @@ bool formater_heure_actuelle(char* texte);
 
 // Reglages de la page "Reglages", gardes dans l'EEPROM apres les mesures.
 enum : uint8_t { CONTRASTE_FAIBLE, CONTRASTE_MOYEN, CONTRASTE_FORT, NB_CONTRASTES };
+enum : uint8_t { LANGUE_FR, LANGUE_EN, NB_LANGUES };
 struct Reglages {
     bool son;          // Bip a chaque battement (bouton D13).
     bool leds;         // LEDs de zone.
     uint8_t contraste; // CONTRASTE_xxx, pour les deux ecrans.
+    uint8_t langue;    // LANGUE_xxx, pour les textes des ecrans.
 };
 extern Reglages reglages;
+
+// Texte en Flash dans la langue choisie : TXT("Reglages", "Settings").
+#define TXT(fr, en) (reglages.langue == LANGUE_EN ? PSTR(en) : PSTR(fr))
 
 // Ecrit les reglages actuels dans l'EEPROM (charges par init_donnees).
 void sauver_reglages();

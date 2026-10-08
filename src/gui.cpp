@@ -6,21 +6,33 @@
 #include <string.h>
 
 // Textes en Flash, comme dans le projet fourni. ASCII sans accents.
-static const char menu_title[] PROGMEM = "Menu principal";
+// Chaque liste existe en francais (_FR) et en anglais (_EN).
 static const char bpm_text[] PROGMEM = "BPM";
-static const char gen_0[] PROGMEM = "Graphique";
-static const char gen_1[] PROGMEM = "Mes donnees";
-static const char gen_2[] PROGMEM = "Enregistrer data";
-static const char gen_3[] PROGMEM = "Reglages";
-static const char* const GEN_MENU[] PROGMEM = {gen_0, gen_1, gen_2, gen_3};
-static_assert(sizeof(GEN_MENU) / sizeof(GEN_MENU[0]) == GEN_MENU_SIZE,
+static const char gen_0_fr[] PROGMEM = "Graphique";
+static const char gen_1_fr[] PROGMEM = "Mes donnees";
+static const char gen_2_fr[] PROGMEM = "Enregistrer data";
+static const char gen_3_fr[] PROGMEM = "Reglages";
+static const char* const GEN_MENU_FR[] PROGMEM = {gen_0_fr, gen_1_fr, gen_2_fr, gen_3_fr};
+static const char gen_0_en[] PROGMEM = "Graph";
+static const char gen_1_en[] PROGMEM = "My data";
+static const char gen_2_en[] PROGMEM = "Save data";
+static const char gen_3_en[] PROGMEM = "Settings";
+static const char* const GEN_MENU_EN[] PROGMEM = {gen_0_en, gen_1_en, gen_2_en, gen_3_en};
+static_assert(sizeof(GEN_MENU_FR) / sizeof(GEN_MENU_FR[0]) == GEN_MENU_SIZE &&
+                  sizeof(GEN_MENU_EN) / sizeof(GEN_MENU_EN[0]) == GEN_MENU_SIZE,
               "GEN_MENU_SIZE doit correspondre au nombre de libelles.");
 
 // Page "Reglages", dans l'ordre de modifier_reglage().
-static const char reglage_0[] PROGMEM = "LEDs";
-static const char reglage_1[] PROGMEM = "Contraste";
-static const char* const REGLAGES[] PROGMEM = {reglage_0, reglage_1};
-static_assert(sizeof(REGLAGES) / sizeof(REGLAGES[0]) == NB_REGLAGES,
+static const char reglage_0_fr[] PROGMEM = "LEDs";
+static const char reglage_1_fr[] PROGMEM = "Contraste";
+static const char reglage_2_fr[] PROGMEM = "Langue";
+static const char* const REGLAGES_FR[] PROGMEM = {reglage_0_fr, reglage_1_fr, reglage_2_fr};
+static const char reglage_0_en[] PROGMEM = "LEDs";
+static const char reglage_1_en[] PROGMEM = "Contrast";
+static const char reglage_2_en[] PROGMEM = "Language";
+static const char* const REGLAGES_EN[] PROGMEM = {reglage_0_en, reglage_1_en, reglage_2_en};
+static_assert(sizeof(REGLAGES_FR) / sizeof(REGLAGES_FR[0]) == NB_REGLAGES &&
+                  sizeof(REGLAGES_EN) / sizeof(REGLAGES_EN[0]) == NB_REGLAGES,
               "NB_REGLAGES doit correspondre au nombre de libelles.");
 
 // 20 caracteres maximum par libelle avec la police de 6 pixels.
@@ -182,11 +194,14 @@ static void print_center_line(const char* text, uint8_t y) {
 // Valeur affichee a droite d'un reglage ("Oui", "Fort"...), en Flash.
 static PGM_P valeur_reglage(uint8_t i) {
     switch (i) {
-    case 0: return reglages.leds ? PSTR("Oui") : PSTR("Non");
+    case 0: return reglages.leds ? TXT("Oui", "Yes") : TXT("Non", "No");
+    case 1:
+        if (reglages.contraste == CONTRASTE_FAIBLE) return TXT("Faible", "Low");
+        if (reglages.contraste == CONTRASTE_MOYEN) return TXT("Moyen", "Medium");
+        return TXT("Fort", "High");
     default:
-        if (reglages.contraste == CONTRASTE_FAIBLE) return PSTR("Faible");
-        if (reglages.contraste == CONTRASTE_MOYEN) return PSTR("Moyen");
-        return PSTR("Fort");
+        // Chaque langue ecrite dans sa propre langue.
+        return reglages.langue == LANGUE_EN ? PSTR("English") : PSTR("Francais");
     }
 }
 
@@ -227,14 +242,18 @@ void print_gen_menu(uint8_t selected) {
     display.firstPage();
     do {
         // Meme image pour toutes les pages : pas de lecture de capteur ici.
-        draw_liste(menu_title, GEN_MENU, GEN_MENU_SIZE, selected, false);
+        draw_liste(TXT("Menu principal", "Main menu"),
+                   reglages.langue == LANGUE_EN ? GEN_MENU_EN : GEN_MENU_FR,
+                   GEN_MENU_SIZE, selected, false);
     } while (display.nextPage());
 }
 
 void afficher_reglages(uint8_t selection) {
     display.firstPage();
     do {
-        draw_liste(PSTR("Reglages"), REGLAGES, NB_REGLAGES, selection, true);
+        draw_liste(TXT("Reglages", "Settings"),
+                   reglages.langue == LANGUE_EN ? REGLAGES_EN : REGLAGES_FR,
+                   NB_REGLAGES, selection, true);
     } while (display.nextPage());
 }
 
@@ -265,7 +284,7 @@ void afficher_donnees(uint8_t selection) {
     }
 
     char titre[22];
-    strcpy_P(titre, PSTR("Mes donnees ("));
+    strcpy_P(titre, TXT("Mes donnees (", "My data ("));
     utoa(n, titre + strlen(titre), 10);
     strcat_P(titre, PSTR("/"));
     utoa(NB_MAX_ENREGISTREMENTS, titre + strlen(titre), 10);
@@ -283,7 +302,7 @@ void afficher_donnees(uint8_t selection) {
         display.drawHLine(0, 8, SCREEN_WIDTH);
 
         if (n == 0) {
-            strcpy_P(texte, PSTR("Aucune donnee"));
+            strcpy_P(texte, TXT("Aucune donnee", "No data"));
             print_center_line(texte, 30);
             continue;
         }
@@ -295,7 +314,7 @@ void afficher_donnees(uint8_t selection) {
             if (i < n) {
                 formater_enregistrement(lire_enregistrement(n - 1 - i), texte);
             } else {
-                strcpy_P(texte, PSTR("Effacer tout"));
+                strcpy_P(texte, TXT("Effacer tout", "Clear all"));
             }
 
             const uint8_t y = Y_PREMIERE_LIGNE + l * HAUTEUR_LIGNE;
@@ -334,12 +353,12 @@ void afficher_confirmation_effacement() {
     display.firstPage();
     do {
         display.setFont(u8g2_font_6x12_tf);
-        strcpy_P(texte, PSTR("Effacer tout ?"));
+        strcpy_P(texte, TXT("Effacer tout ?", "Clear all?"));
         print_center_line(texte, 10);
         display.setFont(u8g2_font_5x7_tr);
-        strcpy_P(texte, PSTR("Clic encodeur : oui"));
+        strcpy_P(texte, TXT("Clic encodeur : oui", "Encoder click: yes"));
         print_center_line(texte, 34);
-        strcpy_P(texte, PSTR("Bouton retour : non"));
+        strcpy_P(texte, TXT("Bouton retour : non", "Back button: no"));
         print_center_line(texte, 46);
     } while (display.nextPage());
 }

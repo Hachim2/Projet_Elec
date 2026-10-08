@@ -63,6 +63,9 @@ static void modifier_reglage(uint8_t i) {
         reglages.contraste = (reglages.contraste + 1) % NB_CONTRASTES;
         appliquer_contraste();
         break;
+    case 2:
+        reglages.langue = (reglages.langue + 1) % NB_LANGUES;
+        break;
     }
     sauver_reglages();
 }
@@ -80,33 +83,33 @@ static void enregistrer(uint8_t bpm) {
     // Le BPM enregistre doit etre la moyenne de 10 intervalles consecutifs.
     const uint8_t n = nombre_intervalles_bpm();
     if (bpm != 0 && n < NB_INTERVALLES_BPM) {
-        strcpy_P(detail, PSTR("Battements : "));
+        strcpy_P(detail, TXT("Battements : ", "Beats: "));
         utoa(n, detail + strlen(detail), 10);
         strcat_P(detail, PSTR("/10"));
-        ouvrir_message(PSTR("Mesure en cours"), detail);
+        ouvrir_message(TXT("Mesure en cours", "Measuring..."), detail);
         return;
     }
 
     switch (enregistrer_bpm(bpm, &e)) {
     case Resultat::Ok:
         formater_enregistrement(e, detail);
-        ouvrir_message(PSTR("Enregistre !"), detail);
+        ouvrir_message(TXT("Enregistre !", "Saved!"), detail);
         break;
     case Resultat::PasDeBpm:
-        strcpy_P(detail, PSTR("Poser le doigt"));
-        ouvrir_message(PSTR("Pas de BPM"), detail);
+        strcpy_P(detail, TXT("Poser le doigt", "Place your finger"));
+        ouvrir_message(TXT("Pas de BPM", "No BPM"), detail);
         break;
     case Resultat::HorlogeInvalide:
-        strcpy_P(detail, PSTR("Regler via port serie"));
-        ouvrir_message(PSTR("Horloge invalide"), detail);
+        strcpy_P(detail, TXT("Regler via port serie", "Set via serial port"));
+        ouvrir_message(TXT("Horloge invalide", "Invalid clock"), detail);
         break;
     case Resultat::MemoirePleine:
-        strcpy_P(detail, PSTR("Effacer Mes donnees"));
-        ouvrir_message(PSTR("Memoire pleine"), detail);
+        strcpy_P(detail, TXT("Effacer Mes donnees", "Clear My data"));
+        ouvrir_message(TXT("Memoire pleine", "Memory full"), detail);
         break;
     case Resultat::ErreurEcriture:
-        strcpy_P(detail, PSTR("Relecture differente"));
-        ouvrir_message(PSTR("Erreur EEPROM"), detail);
+        strcpy_P(detail, TXT("Relecture differente", "Readback mismatch"));
+        ouvrir_message(TXT("Erreur EEPROM", "EEPROM error"), detail);
         break;
     }
 }

@@ -9,9 +9,9 @@ constexpr uint8_t GEN_MENU_SIZE = 4;
 // Dessine le menu complet ; aucune action ni lecture de l'encodeur.
 void print_gen_menu(uint8_t selected);
 
-// Page "Reglages" : LEDs, Contraste, avec leur valeur a droite.
+// Page "Reglages" : LEDs, Contraste, Langue, avec leur valeur a droite.
 // Le son a son propre bouton (D13).
-constexpr uint8_t NB_REGLAGES = 2;
+constexpr uint8_t NB_REGLAGES = 3;
 void afficher_reglages(uint8_t selection);
 
 // Graphique (ecran 1) : trace du signal du capteur facon moniteur

@@ -9,13 +9,13 @@ namespace {
 //   0 : octet de controle (EEPROM neuve = 0xFF partout)
 //   1 : nombre de mesures
 //   2 : mesures, 5 octets chacune (bpm puis secondes)
-//   1020 : octet de controle des reglages, puis les reglages
+//   1019 : octet de controle des reglages, puis les reglages
 constexpr int ADRESSE_CONTROLE = 0;
 constexpr int ADRESSE_NOMBRE = 1;
 constexpr int ADRESSE_MESURES = 2;
 constexpr uint8_t TAILLE_MESURE = 5;
 constexpr uint8_t VALEUR_CONTROLE = 0xB7;
-constexpr int ADRESSE_CONTROLE_REGLAGES = 1020;
+constexpr int ADRESSE_CONTROLE_REGLAGES = 1019;
 constexpr int ADRESSE_REGLAGES = ADRESSE_CONTROLE_REGLAGES + 1;
 constexpr uint8_t VALEUR_CONTROLE_REGLAGES = 0xA1;
 
@@ -176,12 +176,12 @@ void init_donnees() {
     Reglages lus;
     EEPROM.get(ADRESSE_REGLAGES, lus);
     if (EEPROM.read(ADRESSE_CONTROLE_REGLAGES) == VALEUR_CONTROLE_REGLAGES &&
-        lus.contraste < NB_CONTRASTES) {
+        lus.contraste < NB_CONTRASTES && lus.langue < NB_LANGUES) {
         reglages = lus;
     }
 }
 
-Reglages reglages = {true, true, CONTRASTE_FORT};
+Reglages reglages = {true, true, CONTRASTE_FORT, LANGUE_FR};
 
 void sauver_reglages() {
     EEPROM.put(ADRESSE_REGLAGES, reglages);
